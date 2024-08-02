@@ -1,0 +1,151 @@
+services:
+  portainer:
+    container_name: portainer
+    environment:
+    - PUID=1000
+    - PGID=1000
+    - TZ=${TIMEZONE}
+    image: portainer/portainer-ce:latest
+    ports:
+    - 8000:8000
+    - 9443:9443
+    privileged: true
+    restart: always
+    volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+    - ../../data/management/portainer/config:/data
+
+  speedtest-tracker:
+    container_name: speedtest-tracker
+    ports:
+      - 3333:80
+      - 8444:443
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - APP_URL=${SERVER_DOMAIN}
+      - PUBLIC_DASHBOARD=true
+      - SPEEDTEST_SCHEDULE=*/30 * * * *
+      - SPEEDTEST_SERVERS=${SPEEDTEST_SERVERS}
+      - PRUNE_RESULTS_OLDER_THAN=0
+      - APP_TIMEZONE=${TIMEZONE}
+      - DISPLAY_TIMEZONE=${TIMEZONE}
+      - DB_CONNECTION=sqlite
+      - APP_KEY=${API_KEY_SPEEDTEST_TRACKER}
+    volumes:
+      - ../../data/management/speedtest-tracker/config:/config
+    image: lscr.io/linuxserver/speedtest-tracker:0.20.6
+    restart: always
+    
+  dozzle:
+    container_name: dozzle
+    image: amir20/dozzle:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - 7000:8080
+
+  alist:
+    image: xhofe/alist-aria2:latest
+    container_name: alist
+    labels:
+      autoheal-app: true
+    ports:
+    - 5244:5244
+    restart: always
+    volumes:
+    - ../../data/management/alist/data:/opt/alist/data
+    - ${DATA}:${DATA}
+    - ${MEDIA}:${MEDIA}
+    - ${HOME_FOLDER}:${HOME_FOLDER}
+    - ${DATA}:/DATA
+    - ${MEDIA}:/MEDIA
+    - ${HOME_FOLDER}:/HOME_FOLDER
+    
+    environment:
+    - PUID=0
+    - PGID=0
+    - UMASK=022
+    - TZ=${TIMEZONE}
+    healthcheck:
+      interval: 10s
+      retries: 3
+      start_period: 5s
+      test:
+      - CMD-SHELL
+      - cat /MEDIA/media_no_local.anchor && cat /DATA/YK_mount/YK.anchor
+      timeout: 10s
+    networks:
+      - default
+      - media_server_default
+    
+  autoheal:
+    container_name: autoheal
+    deploy:
+      replicas: 1
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: autoheal-app
+      AUTOHEAL_ONLY_MONITOR_RUNNING: true
+    image: willfarrell/autoheal:latest
+    network_mode: none
+    restart: always
+    volumes:
+    - /etc/localtime:/etc/localtime:ro
+    - /var/run/docker.sock:/var/run/docker.sock
+    
+  duckdns:
+    container_name: duckdns
+    environment:
+    - PUID=1000
+    - PGID=1000
+    - TZ=${TIMEZONE}
+    - SUBDOMAINS=${DUCKDNS_SUBDOMAIN}
+    - TOKEN=${DUCKDNS_TOKEN}
+    - UPDATE_IP=ipv4
+    - LOG_FILE=false
+    image: lscr.io/linuxserver/duckdns:latest
+    restart: always
+    volumes:
+    - ../../data/management/duckdns/config:/config
+  
+  homepage:
+    container_name: homepage
+    environment:
+    - HOMEPAGE_VAR_API_KEY_PORTAINER=${API_KEY_PORTAINER}
+    - HOMEPAGE_VAR_API_KEY_RADARR=${API_KEY_RADARR}
+    - HOMEPAGE_VAR_API_KEY_TAUTULLI=${API_KEY_TAUTULLI}
+    - HOMEPAGE_VAR_API_KEY_PLEX=${API_KEY_PLEX}
+    - HOMEPAGE_VAR_API_KEY_SONARR=${API_KEY_SONARR}
+    - HOMEPAGE_VAR_API_KEY_BAZARR=${API_KEY_BAZARR}
+    - HOMEPAGE_VAR_API_KEY_JELLYFIN=${API_KEY_JELLYFIN}
+    - HOMEPAGE_VAR_API_KEY_OVERSEERR=${API_KEY_OVERSEERR}
+    - HOMEPAGE_VAR_TAILSCALE_SERVER_DNS_NAME=${TAILSCALE_SERVER_DNS_NAME}
+    - HOMEPAGE_VAR_QBITTORRENT_USERNAME=${QBITTORRENT_USERNAME}
+    - HOMEPAGE_VAR_QBITTORRENT_PASSWORD=${QBITTORRENT_PASSWORD}
+    - HOMEPAGE_VAR_SERVER_DOMAIN=${LOCAL_DOMAIN}
+    image: ghcr.io/gethomepage/homepage:latest
+    ports:
+    - 3000:3000
+    restart: always
+    volumes:
+    - ../../data/management/homepage/config:/app/config
+    - ../../data/management/homepage/icons:/app/public/icons
+    - /var/run/docker.sock:/var/run/docker.sock:ro
+    - ${DISK_1}:/DISK_1
+    networks:
+      - default
+      - media_server_default
+        
+  openspeedtest:
+    container_name: openspeedtest
+    image: openspeedtest/latest
+    ports:
+    - 4100:3000
+    - 4101:3001
+    restart: always
+
+networks:
+  default:
+    driver: bridge
+  media_server_default:
+    external: true

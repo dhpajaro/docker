@@ -1,0 +1,16 @@
+services:
+  jdownloader-2:
+    container_name: jdownloader-2
+    environment:
+    - SECURE_CONNECTION=${VNC_SECURE_CONNECTION}
+    - VNC_PASSWORD=${VNC_PASSWORD}
+    - ENABLE_CJK_FONT=1
+    image: jlesage/jdownloader-2
+    ports:
+    - 1500:5800
+    - 1501:5900
+    restart: unless-stopped
+    volumes:
+    - ../../data/jdownloader-2/config:/config:rw
+    - ${JDOWNLOADER_FOLDER}:/output:rw
+    - ${JDOWNLOADER_FOLDER}:${JDOWNLOADER_FOLDER}:rw

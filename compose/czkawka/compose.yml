@@ -1,0 +1,15 @@
+services:
+  czkawka:
+    container_name: czkawka
+    environment:
+    - SECURE_CONNECTION=${VNC_SECURE_CONNECTION}
+    - VNC_PASSWORD=${VNC_PASSWORD}
+    image: jlesage/czkawka
+    ports:
+    - 1600:5800
+    - 1601:5900
+    volumes:
+    - ../../data/czkawka/config:/config:rw
+    - /mnt/DATA:/mnt/DATA:rw
+    - ${HOME_FOLDER}/.cache/czkawka:/config/xdg/cache/czkawka:rw
+    - ${HOME_FOLDER}/.config/czkawka:/config/xdg/config/czkawka:rw
