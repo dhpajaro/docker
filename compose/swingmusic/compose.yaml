@@ -1,0 +1,15 @@
+services:
+  swingmusic:
+    image: ghcr.io/swingmx/swingmusic:latest
+    container_name: swingmusic
+    environment:
+      - PUID=${UID:-1000}
+      - PGID=${GID:-1000}
+      - TZ=${TIMEZONE}
+    volumes:
+      - ${DATA}/music:/music
+      - ../../data/swingmusic/config:/config
+    ports:
+      - 1970:1970
+    restart: unless-stopped
+networks: {}

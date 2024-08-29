@@ -1,15 +1,22 @@
 services:
   czkawka:
-    container_name: czkawka
+    #container_name: czkawka_deploy1
+    restart: always
     environment:
-    - SECURE_CONNECTION=${VNC_SECURE_CONNECTION}
-    - VNC_PASSWORD=${VNC_PASSWORD}
+      - PUID=${UID:-1000}
+      - PGID=${GID:-1000}
+      - TZ=${TIMEZONE}
+      - SECURE_CONNECTION=${VNC_SECURE_CONNECTION}
+      - VNC_PASSWORD=${VNC_PASSWORD}
+      - ENABLE_CJK_FONT=1
     image: jlesage/czkawka
     ports:
-    - 1600:5800
-    - 1601:5900
+      - 1601-1603:5800
     volumes:
-    - ../../data/czkawka/config:/config:rw
-    - /mnt/DATA:/mnt/DATA:rw
-    - ${HOME_FOLDER}/.cache/czkawka:/config/xdg/cache/czkawka:rw
-    - ${HOME_FOLDER}/.config/czkawka:/config/xdg/config/czkawka:rw
+      - ../../data/czkawka/config/results_similar_videos_pretty.json:/config/results_similar_videos_pretty.json:rw
+      - ../../data/czkawka/cache:/config/xdg/cache:rw
+      - /mnt:/mnt:rw
+    deploy:
+      mode: replicated
+      replicas: 3
+networks: {}

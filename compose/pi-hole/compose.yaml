@@ -1,0 +1,12 @@
+services:
+  pihole:
+    container_name: pihole
+    image: pihole/pihole:latest
+    network_mode: host
+    environment:
+      TZ: ${TIMEZONE}
+    volumes:
+      - ../../data/pi-hole/config:/etc/pihole
+      - ../../data/pi-hole/etc-dnsmasq.d:/etc/dnsmasq.d
+    restart: unless-stopped
+networks: {}

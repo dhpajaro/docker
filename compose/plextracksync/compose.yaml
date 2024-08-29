@@ -1,0 +1,18 @@
+services:
+  plextraktsync:
+    command: sync
+    container_name: plextraktsync
+    environment:
+      - PUID=${UID:-1000}
+      - PGID=${GID:-1000}
+      - TZ=${TIMEZONE}
+    image: ghcr.io/taxel/plextraktsync
+    restart: on-failure:2
+    volumes:
+      - ../../data/plextraktsync/config:/app/config
+
+networks:
+  default:
+    name: media_server_default
+    external: true
+

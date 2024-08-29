@@ -1,0 +1,30 @@
+services:
+  windows:
+    image: dockurr/windows
+    container_name: windows
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TIMEZONE}
+      - VERSION= win11
+      - REGION= en-US
+      - KEYBOARD= en-US
+      - DISK_SIZE= 128G
+      - USERNAME= docker
+      - RAM_SIZE= 3G
+      - ARGUMENTS= -device usb-host,vendorid=0x174c,productid=0x55aa
+    devices:
+      - /dev/kvm
+      #- /dev/sdb:/disk2 #add USB
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - 8006:8006
+      - 3389:3389/tcp
+      - 3389:3389/udp
+    stop_grace_period: 2m
+    restart: no
+    volumes:
+      - ${DATA}/windows-docker/data:/storage
+      - ${DATA}:/shared
+networks: {}

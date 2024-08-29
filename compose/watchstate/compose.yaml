@@ -1,0 +1,16 @@
+services:
+  watchstate:
+    container_name: watchstate
+    environment:
+      - PUID=${UID:-1000}
+      - PGID=${GID:-1000}
+      - TZ=${TIMEZONE}
+    image: ghcr.io/arabcoders/watchstate:latest
+    user: ${UID:-1000}:${GID:-1000}
+    volumes:
+      - ../../data/watchstate/config:/config:rw
+    command: console state:import -v && console state:export -vvif -s jellyfin
+networks:
+  default:
+    name: media_server_default
+    external: true

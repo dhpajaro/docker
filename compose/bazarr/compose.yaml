@@ -1,0 +1,26 @@
+services:
+  bazarr:
+    container_name: bazarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TIMEZONE}
+    healthcheck:
+      interval: 10s
+      retries: 3
+      start_period: 5s
+      test:
+        - CMD-SHELL
+        - cat /data/media/media_no_local.anchor
+      timeout: 10s
+    image: lscr.io/linuxserver/bazarr:latest
+    logging:
+      driver: json-file
+    ports:
+      - 6767:6767
+    restart: unless-stopped
+    volumes:
+      - ../../data/bazarr/config:/config:rw
+      - ../../data/bazarr/languages.json:/config/subcleaner/libs/subcleaner/languages/languages.json:ro
+      - ${MEDIA}:/data/media:rw
+networks: {}

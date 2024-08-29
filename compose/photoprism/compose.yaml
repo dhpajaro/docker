@@ -1,0 +1,63 @@
+services:
+  photoprism:
+    image: photoprism/photoprism:latest
+    restart: unless-stopped
+    stop_grace_period: 10s
+    security_opt:
+      - seccomp:unconfined
+      - apparmor:unconfined
+    ports:
+      - 2342:2342
+    ## Start as non-root user before initialization (supported: 0, 33, 50-99, 500-600, and 900-1200):
+    user: ${UID:-1000}:${GID:-1000}
+    environment:
+      PUID: ${UID:-1000}
+      PGID: ${GID:-1000}
+      TZ: ${TIMEZONE}
+      PHOTOPRISM_ADMIN_USER: usuario
+      PHOTOPRISM_ADMIN_PASSWORD: ${PASSWORD}
+      PHOTOPRISM_AUTH_MODE: password
+      PHOTOPRISM_SITE_URL: ${DOMAIN_URL}:2342/
+      PHOTOPRISM_DISABLE_TLS: "false"
+      PHOTOPRISM_DEFAULT_TLS: "true"
+      PHOTOPRISM_ORIGINALS_LIMIT: 5000
+      PHOTOPRISM_HTTP_COMPRESSION: gzip
+      PHOTOPRISM_LOG_LEVEL: info
+      PHOTOPRISM_READONLY: "false"
+      PHOTOPRISM_EXPERIMENTAL: "false"
+      PHOTOPRISM_DISABLE_CHOWN: "false" #
+      PHOTOPRISM_DISABLE_WEBDAV: "false" 
+      PHOTOPRISM_DISABLE_SETTINGS: "false" 
+      PHOTOPRISM_DISABLE_TENSORFLOW: "true"
+      PHOTOPRISM_DISABLE_FACES: "false" # disables face detection and recognition (requires TensorFlow)
+      PHOTOPRISM_DISABLE_CLASSIFICATION: "false" # disables image classification (requires TensorFlow)
+      PHOTOPRISM_DISABLE_VECTORS: "false" # disables vector graphics support
+      PHOTOPRISM_DISABLE_RAW: "false" 
+      PHOTOPRISM_RAW_PRESETS: "false" 
+      PHOTOPRISM_SIDECAR_YAML: "true" 
+      PHOTOPRISM_BACKUP_ALBUMS: "true" 
+      PHOTOPRISM_BACKUP_DATABASE: "true" 
+      PHOTOPRISM_BACKUP_SCHEDULE: daily # backup SCHEDULE in cron format (e.g. "0 12 * * *" for daily at noon) or at a random time (daily, weekly)
+      PHOTOPRISM_INDEX_SCHEDULE: "" # indexing SCHEDULE in cron format (e.g. "@every 3h" for every 3 hours; "" to disable)
+      PHOTOPRISM_AUTO_INDEX: 300 # delay before automatically indexing files in SECONDS when uploading via WebDAV (-1 to disable)
+      PHOTOPRISM_AUTO_IMPORT: -1 # delay before automatically importing files in SECONDS when uploading via WebDAV (-1 to disable)
+      PHOTOPRISM_DETECT_NSFW: "false" # automatically flags photos as private that MAY be offensive (requires TensorFlow)
+      PHOTOPRISM_UPLOAD_NSFW: "true" # allows uploads that MAY be offensive (no effect without TensorFlow)
+      PHOTOPRISM_DATABASE_DRIVER: sqlite
+      PHOTOPRISM_SITE_CAPTION: AI-Powered Photos App
+      PHOTOPRISM_SITE_DESCRIPTION: "" 
+      PHOTOPRISM_SITE_AUTHOR: "" 
+      PHOTOPRISM_FFMPEG_ENCODER: "intel"        
+      PHOTOPRISM_FFMPEG_SIZE: "1920"              
+      PHOTOPRISM_FFMPEG_BITRATE: "32"             
+      ## Run as a non-root user after initialization (supported: 0, 33, 50-99, 500-600, and 900-1200):
+      PHOTOPRISM_UID: ${UID:-1000}
+      PHOTOPRISM_GID: ${GID:-1000}
+    devices:
+      - /dev/dri:/dev/dri
+    working_dir: /photoprism 
+    volumes:
+      - ${DATA}/YK_local:/photoprism/originals/YK_local:ro
+      - ${DATA}/thumbs:/photoprism/originals/thumbs:ro
+      - ../../data/photoprism/storage:/photoprism/storage
+networks: {}

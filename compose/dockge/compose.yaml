@@ -2,6 +2,7 @@ services:
   dockge:
     container_name: dockge
     image: louislam/dockge:1
+    
     restart: unless-stopped
     ports:
       - 5001:5001
@@ -10,4 +11,7 @@ services:
       - ../../data/dockge/data:/app/data
       - ${HOME_FOLDER}/docker/compose:${HOME_FOLDER}/docker/compose
     environment:
+      - PUID=${UID:-1000}
+      - PGID=${GID:-1000}
+      - TZ=${TIMEZONE}
       - DOCKGE_STACKS_DIR=${HOME_FOLDER}/docker/compose

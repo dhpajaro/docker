@@ -2,250 +2,168 @@ services:
   autoscan:
     container_name: autoscan
     depends_on:
-    - plex
-    - jellyfin
-    environment:
-    - PUID=1000
-    - PGID=1000
-    healthcheck:
-      interval: 10s
-      retries: 3
-      start_period: 5s
-      test:
-      - CMD-SHELL
-      - cat /data/media/media_no_local.anchor
-      timeout: 10s
-    image: cloudb0x/autoscan
-    labels:
-      autoheal-app: true
-    ports:
-    - 3030:3030
-    restart: always
-    volumes:
-    - ../../data/media_server/autoscan/config:/config
-    - ${MEDIA}:/data/media:ro
-
-  rclone_YK:
-    cap_add:
-    - SYS_ADMIN
-    command: 'mount YK_w_local: /data --allow-non-empty --vfs-cache-max-age 20m --allow-other --vfs-cache-mode
-      writes --vfs-cache-max-size 20G --vfs-write-back 20m --vfs-cache-poll-interval 20s --tpslimit 8 --tpslimit-burst
-      3 --log-level INFO'
-    container_name: rclone_YK
-    devices:
-    - /dev/fuse:/dev/fuse:rwm
-    environment:
-      PGID: 1000
-      PUID: 1000
-      TZ: ${TIMEZONE}
-    healthcheck:
-      interval: 10s
-      retries: 3
-      start_period: 30s
-      test:
-      - CMD-SHELL
-      - cat /data/YK.anchor
-      timeout: 60s
-    image: rclone/rclone:latest
-    restart: always
-    security_opt:
-    - apparmor:unconfined
-    volumes:
-    - ../../data/rclone:/config/rclone
-    - ${DATA}/YK_mount:/data:rshared
-    - ${DATA}/YK_local:${DATA}/YK_local:rw
-
-  bazarr:
-    container_name: bazarr
-    depends_on:
-      prowlarr:
-        condition: service_started
-      rclone_media:
+      plex:
+        condition: service_healthy
+      jellyfin:
         condition: service_healthy
     environment:
-    - PUID=1000
-    - PGID=1000
-    - TZ=${TIMEZONE}
+      - PUID=${UID:-1000}
+      - PGID=${GID:-1000}
+      - TZ=${TIMEZONE}
     healthcheck:
       interval: 10s
       retries: 3
       start_period: 5s
       test:
-      - CMD-SHELL
-      - cat /data/media/media_no_local.anchor
+        - CMD-SHELL
+        - cat /data/media/media_no_local.anchor
       timeout: 10s
-    image: lscr.io/linuxserver/bazarr:latest
-    labels:
-      autoheal-app: true
-    logging:
-      driver: json-file
+    image: cloudb0x/autoscan
     ports:
-    - 6767:6767
-    profiles:
-    - disabled
-    restart: unless-stopped
+      - 3030:3030
+    restart: always
     volumes:
-    - ../../data/media_server/bazarr/config:/config:rw
-    - ../../data/media_server/bazarr/languages.json:/config/subcleaner/libs/subcleaner/languages/languages.json:ro
-    - ${MEDIA}:/data/media:rw
-
+      - ../../data/media_server/autoscan/config:/config
+      - ${MEDIA}:/data/media:ro
   flaresolverr:
     container_name: flaresolverr
     environment:
-    - LOG_LEVEL=${LOG_LEVEL:-DEBUG}
-    - LOG_HTML=${LOG_HTML:-false}
-    - CAPTCHA_SOLVER=${CAPTCHA_SOLVER:-none}
-    - TZ=${TIMEZONE}
+      - PUID=${UID:-1000}
+      - PGID=${GID:-1000}
+      - TZ=${TIMEZONE}
+      - LOG_LEVEL=${LOG_LEVEL:-DEBUG}
+      - LOG_HTML=${LOG_HTML:-false}
+      - CAPTCHA_SOLVER=${CAPTCHA_SOLVER:-none}
     image: flaresolverr/flaresolverr:latest
     ports:
-    - 8191:8191
+      - 8191:8191
     restart: unless-stopped
-
   jellyfin:
     container_name: jellyfin
     depends_on:
       rclone_media:
         condition: service_healthy
     devices:
-    - /dev/dri:/dev/dri
+      - /dev/dri:/dev/dri
     environment:
-    - PUID=1000
-    - PGID=1000
-    - TZ=${TIMEZONE}
-    - JELLYFIN_PublishedServerUrl=${LOCAL_DOMAIN}
-    - JELLYFIN_FFmpeg__probesize=62000000
-    - JELLYFIN_FFmpeg__analyzeduration=62000000
+      - PUID=${UID:-1000}
+      - PGID=${GID:-1000}
+      - TZ=${TIMEZONE}
+      - JELLYFIN_PublishedServerUrl=${LOCAL_DOMAIN}
+      - JELLYFIN_FFmpeg__probesize=62000000
+      - JELLYFIN_FFmpeg__analyzeduration=62000000
     group_add:
-    - '110'
+      - "110"
     healthcheck:
-      interval: 10s
-      retries: 3
-      start_period: 5s
+      interval: 30s
+      retries: 5
+      start_period: 2m00s
       test:
-      - CMD-SHELL
-      - cat /data/media/media_no_local.anchor
-      timeout: 10s
+        - CMD-SHELL
+        - cat /data/media/media_no_local.anchor && curl --connect-timeout 15
+          --silent --show-error --fail "http://localhost:8096/health"
+      timeout: 15s
     hostname: jellyfin
     image: lscr.io/linuxserver/jellyfin:latest
     labels:
       autoheal-app: true
     ports:
-    - 8096:8096
-    - 7359:7359
-    - 1900:1900
+      - 8096:8096
+      - 7359:7359
+      - 1900:1900
     restart: unless-stopped
-    ulimits:
-      nofile:
-        hard: 1024
-        soft: 1024
     volumes:
-    - ../../data/media_server/jellyfin/config:/config
-    - ${MEDIA}:/data/media:ro
-    
+      - ../../data/media_server/jellyfin/config:/config
+      - ${MEDIA}:/data/media:ro
   overseerr:
     container_name: overseerr
     environment:
-    - LOG_LEVEL=debug
-    - TZ=${TIMEZONE}
-    - PORT=5055
+      - PUID=${UID:-1000}
+      - PGID=${GID:-1000}
+      - TZ=${TIMEZONE}
+      - LOG_LEVEL=debug
+      - PORT=5055
     image: sctx/overseerr:latest
     ports:
-    - 5055:5055
+      - 5055:5055
     restart: unless-stopped
     volumes:
-    - ../../data/media_server/overseerr/config:/app/config
-
+      - ../../data/media_server/overseerr/config:/app/config
   plex:
     container_name: plex
     depends_on:
       rclone_media:
         condition: service_healthy
     devices:
-    - /dev/dri:/dev/dri
+      - /dev/dri:/dev/dri
     environment:
-    - PUID=1000
-    - PGID=1000
-    - TZ=${TIMEZONE}
-    - VERSION=docker
+      - PUID=${UID:-1000}
+      - PGID=${GID:-1000}
+      - TZ=${TIMEZONE}
+      - VERSION=docker
     healthcheck:
-      interval: 10s
-      retries: 3
-      start_period: 5s
+      interval: 30s
+      retries: 5
+      start_period: 2m00s
       test:
-      - CMD-SHELL
-      - cat /data/media/media_no_local.anchor
+        - CMD-SHELL
+        - cat /data/media/media_no_local.anchor && curl --connect-timeout 15
+          --silent --show-error --fail "http://localhost:32400/identity"
       timeout: 10s
     hostname: plex
     image: linuxserver/plex:latest
     labels:
       autoheal-app: true
     ports:
-    - 32400:32400
-    - 32401:32401
-    - 33400:33400
-    - 8324:8324
-    - 32410:32410/udp
-    - 32412:32412/udp
-    - 32413:32413/udp
-    - 32414:32414/udp
-    - 32469:32469
+      - 32400:32400
+      - 32401:32401
+      - 33400:33400
+      - 8324:8324
+      - 32410:32410/udp
+      - 32412:32412/udp
+      - 32413:32413/udp
+      - 32414:32414/udp
+      - 32469:32469
     restart: always
     tmpfs:
-    - /config/Library/Application Support/Plex Media Server/Cache/PhotoTranscoder
-    - /config/transcode
+      - /config/Library/Application Support/Plex Media
+        Server/Cache/PhotoTranscoder
+      - /config/transcode
     volumes:
-    - ../../data/media_server/plex/config:/config
-    - ${MEDIA}:/data/media:rw
-
-  plextraktsync:
-    command: sync
-    container_name: plextraktsync
-    depends_on:
-    - plex
-    environment:
-    - PUID=1000
-    - PGID=1000
-    - TZ=${TIMEZONE}
-    image: ghcr.io/taxel/plextraktsync
-    profiles:
-    - disabled
-    restart: on-failure:2
-    volumes:
-    - ../../data/media_server/plextraktsync/config:/app/config
-
+      - ../../data/media_server/plex/config:/config
+      - ${MEDIA}:/data/media:rw
   prowlarr:
     container_name: prowlarr
     depends_on:
-    - flaresolverr
+      - flaresolverr
     environment:
-    - PUID=1000
-    - PGID=1000
-    - TZ=${TIMEZONE}
+      - PUID=${UID:-1000}
+      - PGID=${GID:-1000}
+      - TZ=${TIMEZONE}
     image: lscr.io/linuxserver/prowlarr:latest
     ports:
-    - 9696:9696
+      - 9696:9696
     restart: unless-stopped
     volumes:
-    - ../../data/media_server/prowlarr/config:/config
-
+      - ../../data/media_server/prowlarr/config:/config
   qbittorrent:
     container_name: qbittorrent
     environment:
-    - PUID=1000
-    - PGID=1000
-    - TZ=${TIMEZONE}
-    - WEBUI_PORT=8080
+      - PUID=${UID:-1000}
+      - PGID=${GID:-1000}
+      - TZ=${TIMEZONE}
+      - WEBUI_PORT=8080
     image: lscr.io/linuxserver/qbittorrent:latest
     ports:
-    - 8080:8080
-    - 6881:6881
-    - 6881:6881/udp
+      - 8080:8080
+      - 6881:6881
+      - 6881:6881/udp
     restart: unless-stopped
     volumes:
-    - ../../data/media_server/qbittorrent/config:/config
-    - ${TORRENTS_FOLDER}:/data/torrents
-    - ${MEDIA}:/data/media
-
+      - ../../data/media_server/qbittorrent/config:/config
+      - ${TORRENTS_FOLDER}:/data/torrents
+      - ${MEDIA}:/data/media
+      - ${USB}:/data/USB
   radarr:
     container_name: radarr
     depends_on:
@@ -254,77 +172,76 @@ services:
       rclone_media:
         condition: service_healthy
     environment:
-    - PUID=1000
-    - PGID=1000
-    - TZ=${TIMEZONE}
+      - PUID=${UID:-1000}
+      - PGID=${GID:-1000}
+      - TZ=${TIMEZONE}
     healthcheck:
       interval: 10s
       retries: 3
       start_period: 5s
       test:
-      - CMD-SHELL
-      - cat /data/media/media_no_local.anchor
+        - CMD-SHELL
+        - cat /data/media/media_no_local.anchor
       timeout: 10s
     image: lscr.io/linuxserver/radarr:latest
-    labels:
-      autoheal-app: true
     logging:
       driver: json-file
     ports:
-    - 7878:7878
+      - 7878:7878
     restart: unless-stopped
     volumes:
-    - ../../data/media_server/radarr/config:/config
-    - ${MEDIA}:/data/media:rw
-    - ${TORRENTS_FOLDER}:/data/torrents:rw
-
+      - ../../data/media_server/radarr/config:/config
+      - ${MEDIA}:/data/media:rw
+      - ${TORRENTS_FOLDER}:/data/torrents:rw
   rclone_media:
     cap_add:
-    - SYS_ADMIN
-    command: 'mount media: /data --allow-non-empty --allow-other --dir-cache-time
-      500h --poll-interval 150s --vfs-cache-mode writes --vfs-cache-max-size 20G --vfs-cache-max-age
-      10m --vfs-disk-space-total-size 256T --vfs-cache-poll-interval 20s --tpslimit
-      8 --tpslimit-burst 3 --log-level INFO'
+      - SYS_ADMIN
+    command: "mount media: /data --allow-non-empty --allow-other --dir-cache-time
+      500h --poll-interval 150s --vfs-disk-space-total-size 256T --tpslimit 8
+      --tpslimit-burst 3 --log-level DEBUG"
     container_name: rclone_media
     devices:
-    - /dev/fuse:/dev/fuse:rwm
+      - /dev/fuse:/dev/fuse:rwm
     environment:
-      PGID: 1000
-      PUID: 1000
-      TZ: ${TIMEZONE}
+      - PUID=${UID:-1000}
+      - PGID=${GID:-1000}
+      - TZ=${TIMEZONE}
     healthcheck:
       interval: 10s
       retries: 3
       start_period: 5s
       test:
-      - CMD-SHELL
-      - cat /data/media_no_local.anchor
+        - CMD-SHELL
+        - cat /data/media_no_local.anchor
       timeout: 10s
     image: rclone/rclone:latest
     restart: always
     security_opt:
-    - apparmor:unconfined
+      - apparmor:unconfined
     volumes:
-    - ../../data/rclone:/config/rclone
-    - ../../data/media_server/media_local:/media_local:rw
-    - ${MEDIA}:/data:rshared
-
+      - ../../rclone:/config/rclone
+      - ../../data/media_server/media_local:/media_local_subs:rw
+      - ${DATA}/media_local_mkv:/media_local_mkv:rw
+      - ${MEDIA}:/data:rshared
   rdt-client:
     container_name: rdt-client
     image: rogerfar/rdtclient
+    environment:
+      - PUID=${UID:-1000}
+      - PGID=${GID:-1000}
+      - TZ=${TIMEZONE}
     logging:
       driver: json-file
       options:
         max-size: 10m
     ports:
-    - 6500:6500
+      - 6500:6500
     profiles:
-    - disabled
-    restart: always
+      - disabled
+    restart: unless-stopped
     volumes:
-    - ${DOWNLOADS_FOLDER}/rdt-client:/data/downloads
-    - ../../data/media_server/rdt-client:/data/db
-
+      - ${DOWNLOADS_FOLDER}/rdt-client:/data/downloads
+      - ../../data/media_server/rdt-client:/data/db
   sonarr:
     container_name: sonarr
     depends_on:
@@ -333,87 +250,66 @@ services:
       rclone_media:
         condition: service_healthy
     environment:
-    - PUID=1000
-    - PGID=1000
-    - TZ=${TIMEZONE}
+      - PUID=${UID:-1000}
+      - PGID=${GID:-1000}
+      - TZ=${TIMEZONE}
     healthcheck:
       interval: 10s
       retries: 3
       start_period: 5s
       test:
-      - CMD-SHELL
-      - cat /data/media/media_no_local.anchor
+        - CMD-SHELL
+        - cat /data/media/media_no_local.anchor
       timeout: 10s
     image: lscr.io/linuxserver/sonarr:latest
-    labels:
-      autoheal-app: true
     logging:
       driver: json-file
     ports:
-    - 8989:8989
+      - 8989:8989
     restart: unless-stopped
     volumes:
-    - ../../data/media_server/sonarr/config:/config
-    - ${MEDIA}:/data/media:rw
-    - ${TORRENTS_FOLDER}:/data/torrents:rw
-
+      - ../../data/media_server/sonarr/config:/config
+      - ${MEDIA}:/data/media:rw
+      - ${TORRENTS_FOLDER}:/data/torrents:rw
   tautulli:
     container_name: tautulli
     depends_on:
-    - plex
+      - plex
     environment:
-    - PUID=1000
-    - PGID=1000
-    - TZ=${TIMEZONE}
+      - PUID=${UID:-1000}
+      - PGID=${GID:-1000}
+      - TZ=${TIMEZONE}
     image: lscr.io/linuxserver/tautulli:2.13.4
     ports:
-    - 8181:8181
+      - 8181:8181
     restart: always
     volumes:
-    - ../../data/media_server/tautulli/config:/config
-  
+      - ../../data/media_server/tautulli/config:/config
   tdarr:
     container_name: tdarr
     devices:
-    - /dev/dri:/dev/dri
+      - /dev/dri:/dev/dri
     environment:
-    - TZ=${TIMEZONE}
-    - PUID=1000
-    - PGID=1000
-    - UMASK_SET=002
-    - serverIP=0.0.0.0
-    - serverPort=8266
-    - webUIPort=8265
-    - internalNode=true
-    - inContainer=true
-    - nodeName=internalDockerNode
+      - PUID=${UID:-1000}
+      - PGID=${GID:-1000}
+      - TZ=${TIMEZONE}
+      - UMASK_SET=002
+      - serverIP=0.0.0.0
+      - serverPort=8266
+      - webUIPort=8265
+      - internalNode=true
+      - inContainer=true
+      - nodeName=internalDockerNode
     image: ghcr.io/haveagitgat/tdarr:latest
     ports:
-    - 8265:8265
-    - 8266:8266
+      - 8265:8265
+      - 8266:8266
     profiles:
-    - disabled
+      - disabled
     volumes:
-    - ../../data/media_server/tdarr/server:/app/server
-    - ../../data/media_server/tdarr/config:/app/configs
-    - ../../data/media_server/tdarr/logs:/app/logs
-    - ../../data/media_server/tdarr_temp:/temp
-    - ${MEDIA}:/media
-
-  watchstate:
-    container_name: watchstate
-    depends_on:
-      plex:
-        condition: service_started
-      jellyfin:
-        condition: service_healthy
-    environment:
-    - WS_TZ=${TIMEZONE}
-    - PUID=1000
-    - PGID=1000
-    image: ghcr.io/arabcoders/watchstate:dev
-    profiles:
-    - disabled
-    user: ${UID:-1000}:${GID:-1000}
-    volumes:
-    - ../../data/media_server/watchstate/config:/config:rw
+      - ../../data/media_server/tdarr/server:/app/server
+      - ../../data/media_server/tdarr/config:/app/configs
+      - ../../data/media_server/tdarr/logs:/app/logs
+      - ../../data/media_server/tdarr_temp:/temp
+      - ${MEDIA}:/media
+networks: {}
