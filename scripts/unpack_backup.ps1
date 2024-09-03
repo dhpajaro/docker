@@ -1,16 +1,22 @@
 param (
     [Parameter(Mandatory=$true)]
+    [Alias('i')]
     [string]$inputPath,
 
     [Parameter(Mandatory=$true)]
+    [Alias('o')]
     [string]$outputPath
 )
 
-# Get all files in the input folder
-$allFiles = Get-ChildItem -Path $inputPath -Force -Recurse -File
-$absoluteInputPath = (Resolve-Path $inputPath).Path.TrimEnd('\', '/')
+$scriptConfig = [PSCustomObject]@{
+    InputFolder = Get-Item -LP $inputPath -Force
+    OutputFolder = New-Item -Type Directory -Force $outputPath
+}
+
+$scriptConfig | Format-List
+
+$allFiles = Get-ChildItem -LP $inputPath -Force -Recurse -File
 $password = Read-Host -Prompt "enter password for the archive" -MaskInput
-New-Item -ItemType Directory $outputPath -Force | Out-Null
 $regexPattern = "\.7z\.\d{3}$"
 
 foreach ($file in $allFiles) {
@@ -20,20 +26,18 @@ foreach ($file in $allFiles) {
             continue
         }
     }
-    $relativePath =  Resolve-Path $file.Directory -Relative -RelativeBasePath $absoluteInputPath
-    $currentOutputPath = Join-Path (Resolve-Path $outputPath) ($relativePath -replace "^\./", "")
-    
-    $absolutePathCurrentFileDirectory = Resolve-Path $file.Directory
-    
-    if ($absolutePathCurrentFileDirectory.Path -eq $absoluteInputPath){
-        $currentOutputPath = Resolve-Path $outputPath
+    $relativePath =  Resolve-Path $file.Directory -Relative -RelativeBasePath $scriptConfig.InputFolder
+    $currentOutputPath = Join-Path $scriptConfig.OutputFolder ($relativePath -replace "^\./", "")
+        
+    if ($file.Directory.Path -eq $scriptConfig.InputFolder){
+        $currentOutputPath = $scriptConfig.OutputFolder
     }
 
     New-Item -ItemType Directory $currentOutputPath -Force | Out-Null
 
     if (($file.Extension -eq '.7z') -or ($file.Name -Like "*.7z.001")) {
         # For 7z files, extract them into the output folder
-        & 7z x "$($file.FullName)" -bso0 -bsp1 -o"$currentOutputPath" -p"$password"
+        & 7z x $file -bso0 -bsp1 -o"$currentOutputPath" -p"$password"
         if ($?) {
             Write-Output "'$($file.Name)' has been extracted to '$currentOutputPath'."
         } else {
@@ -44,7 +48,7 @@ foreach ($file in $allFiles) {
     
     else {
         # For non-7z files, copy them to the output folder
-        Copy-Item -Path $file.FullName -Destination $currentOutputPath -Force
+        Copy-Item -Path $file -Destination $currentOutputPath -Force
         if ($?) {
             Write-Output "file '$($file.Name)' has been copied to '$currentOutputPath'."
         } else {

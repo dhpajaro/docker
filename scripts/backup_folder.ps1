@@ -9,109 +9,140 @@ param(
 
     [parameter(Mandatory=$false)]
     [alias("x")]
-    [string[]]$exclude
+    [array]$excludeFolders
 )
 
-$TimeStamp = Get-Date -Format "yyyyMMdd_HHmmss"
-if (-not ($PSBoundParameters.ContainsKey('outputPath'))){
-    $outputPath = Split-Path -Path (Resolve-Path -Path $inputPath ) -Parent
-    Write-Warning "Using default outputPath (parent folder of input)"
+function Check-RunEnviroment {
+    if (-not ($isLinux)){
+        Throw "script only runs on Linux"
+    }
+    $uid = whoami        
+    Write-Output "running as: $uid"
+    if (-not ($uid -eq 'root')){
+        Throw "script must be run as root"
+    }
 }
 
-$OutputFolderName = "docker_backup_$TimeStamp"
-$outputPath = Join-Path (Get-Item $outputPath).FullName $OutputFolderName
+Check-RunEnviroment
 
-Write-Output "output = $outputPath"
-Write-Output "exclude = $exclude"
+$timeNow = Get-Date -Format "yyyyMMdd_HHmmss"
+$outputRoot = Split-Path $inputPath -Parent
+
+if ($outputPath){$outputRoot = $outputPath}
+else {Write-Warning "Using default outputPath (parent folder of input)"}
+
+$backupName = (Split-Path $inputPath -Leaf) + "_backup_$timeNow"
+
+$excludeFoldersArray = $excludeFolders
+if ($excludeFolders.Count -eq 1) {
+    $excludeFoldersArray = $excludeFolders[0] -split ','
+}
+
+$scriptConfig = [PSCustomObject]@{
+    InputFolder = Get-Item -LP $inputPath -Force
+    OutputFolder = New-Item -Type Directory -Force (Join-Path $outputRoot $backupName)
+    Exclude = $excludeFoldersArray
+}
+
+$scriptConfig | Format-List
 
 $password = Read-Host -Prompt "enter password for the archive" -MaskInput
 $password2 = Read-Host -Prompt "enter password for the archive (again)" -MaskInput
 if ($password -ne $password2) {
-    Throw "passwords do not match"
+    Throw "password does not match"
 }
 
-$start = Get-Date
-$rootSubFolders = Get-ChildItem -Path $inputPath -Directory -Force | Where-Object { $_.Name -ne 'data' }
-$dataSubFolders = Get-ChildItem -Path (Join-Path $inputPath "data") -Directory -Force | Where-Object { $_.Name -ne 'media_server' }
-$mediaServerSubFolders = Get-ChildItem -Path (Join-Path $inputPath "data" "media_server") -Directory -Force
-
-function Remove-001IfSinglePart {
-    param ([string]$baseName,[string]$folderPath)
-
-    $otherParts = Get-ChildItem -Path $folderPath -Filter "$baseName.*" -Force | Where-Object { $_.Extension -ne ".001" }
+function Rename-IfSinglePart {
+    param ([string]$filePath)
+    $firstPart = Get-Item -LP "$filePath.001" -Force
+    $otherParts = Get-ChildItem -LP $firstPart.Directory -Filter "$(Split-Path $filePath -Leaf).*" -Force | Where-Object { $_.Extension -ne ".001" }
     
     if ($otherParts.Count -eq 0) {
-        $newName = $baseName
-        $newPath = Join-Path $folderPath $newName
-        Rename-Item -Path $file.FullName -NewName $newPath -Force
-        Write-Host "Renamed $($file.Name) to $newName"
-    }
-    
+        $newPath = Join-Path $firstPart.Directory $firstPart.BaseName
+        Rename-Item -Path $firstPart -NewName $newPath -Force
+        Write-Verbose "Renamed $oldPath to $newPath"
+    } 
 }
+
 function Compress-SubFolders {
     param(
         [Parameter(Mandatory = $true)]
-        [array]$subFolders, 
+        [string]$inputFolderPath, 
         [Parameter(Mandatory = $true)]
         [string]$outputFolderPath
     )
 
     $excludeAllways = @("data",'media_server')
-    New-Item -ItemType Directory -Path $outputFolderPath -Force | Out-Null
+    $subFolders = Get-ChildItem -LP $inputFolderPath -Directory -Force 
     foreach ($subFolder in $subFolders) {
-        $subFolderName = $subFolder.Name
-        if ($subFolderName -eq "scripts") {
-            Write-Output "Copying '$($subFolderName)'..."
-            Copy-Item -Path $subFolder.FullName -Destination $outputFolderPath -Force -Recurse
+
+        if ($subFolder.Name -eq "scripts") {
+            Write-Output "copying '$($subFolder.Name)'..."
+            Copy-Item -LP $subFolder -Destination $outputFolderPath -Force -Recurse
             continue
         } 
-        if ($subFolderName -in $excludeAllways) {
-            Write-Warning "skipping $($subFolder.Fullname)"
+        if ($subFolder.Name -in $excludeAllways) {
+            Write-Verbose "skipping $subFolder"
             continue
         } 
-        if ($subFolderName -in $exclude){
-            Write-Warning "skipping $($subFolder.Fullname)"
+
+        if ($subFolder.Name -in $scriptConfig.Exclude){
+            Write-Warning "skipping $subFolder"
             continue
         }
-        $outputFilePath = Join-Path $outputFolderPath ($subFolderName + ".7z")
-        Write-Output "Compressing '$($subFolder.Name)'..."
-        & 7z a -bso0 -bsp1 -mmt -m0=lzma2 -mx=5 -p"$password" -v2g -mhe $outputFilePath $subFolder '-xr!*Cache*' '-xr!*cache*' '-xr!*.log' '-xr!*.mkv' '-xr!*.mp4' '-xr!*Codecs*' '-xr!*Logs*' '-xr!*logs*' '-xr!*tmp/*' '-xr!*Updates/*' '-xr!*update/*' '-xr!*Crash*Reports/*' 
-        Remove-001IfSinglePart ($subFolderName + ".7z")
+        $outputFilePath = Join-Path $outputFolderPath ($subFolder.Name + ".7z")
+        Write-Output "compressing '$($subFolder.Name)'..."
+        & 7z a -bso0 -bsp1 -m0=LZMA2:d64k:fb32 -mmt=2 -mhe -mx=1 -v2g -p"$password" $outputFilePath $subFolder '-xr!*Backups*' '-xr!*Cache*' '-xr!*cache*' '-xr!*.log' '-xr!*.mkv' '-xr!*.mp4' '-xr!*Codecs*' '-xr!*Logs*' '-xr!Log' '-xr!log' '-xr!*logs*' '-xr!*tmp/*' '-xr!*Updates/*' '-xr!*update/*' '-xr!*Crash*Reports/*' 
+        Rename-IfSinglePart $outputFilePath
     } 
 }
 
-try{
-    $outputDataFolder = Join-Path $outputPath 'data'
-    $outputMediaServerFolder = Join-Path $outputDataFolder 'media_server'
-    
-    Write-Output "`nCompressing root folders, excluding 'data'"
-    Compress-SubFolders $rootSubFolders $outputPath
-
-    Write-Output "`nCompressing 'data' folders, excluding 'media_server'"
-    Compress-SubFolders $dataSubFolders $outputDataFolder 
-
-    Write-Output "`nCompressing 'media_server' folders"
-    Compress-SubFolders $mediaServerSubFolders $outputMediaServerFolder
-
-    $LooseFiles = Get-ChildItem -Path $inputPath -File -Force
-    Write-Output "Compressing loose files..."
-    foreach ($File in $LooseFiles) {
-        $outputLooseFilesPath = Join-Path $outputPath "_loose_files.7z"
-        if ($File.Extension -eq ".ps1" -or $File.Extension -eq ".sh") {
-            Write-Output "Copying '$($File.Name)'..."
-            Copy-Item -Path $File.FullName -Destination $outputPath -Force
+function Compress-LooseFiles {
+    $looseFiles = Get-ChildItem -LP $scriptConfig.InputFolder -File -Force
+    $scriptExtensions = @('.ps1','.sh')
+    Write-Output "`n--- Compressing loose files ---"
+    foreach ($file in $looseFiles) {
+        $outputPath = Join-Path $scriptConfig.OutputFolder "loose_files.7z"
+        if ($file.Extension in $scriptExtensions) {
+            Write-Output "copying '$($file.Name)'..."
+            Copy-Item -Path $file -Destination $outputPath -Force
         } else {
-            & 7z a -bso0 -bsp1 -mmt -m0=lzma2 -mx=1 -p"$password" -mhe $outputLooseFilesPath $File.FullName
+             & 7z a -bso0 -bsp1 -m0=LZMA2:d64k:fb32 -mmt=2 -mhe -mx=1 -p"$password" $outputPath $file
         }
     }
-
-    $elapsed = (Get-Date) - $start
-    Write-Output "Backup completed. Files are stored in: $outputPath "
-    Write-Output "Elapsed time: ($elapsed)"
 }
-finally{
-    if ($isLinux){
-        Write-Output "Changing ownership of outputFolder..."
+
+function main{
+    try{
+
+        $start = Get-Date
+        Compress-LooseFiles
+        
+        $inputDataFolder = Join-Path $scriptConfig.InputFolder 'data'
+        $inputMediaServerFolder = Join-Path $inputDataFolder 'media_server'
+        $outputDataFolder = New-Item -ItemType Directory -Path (Join-Path $scriptConfig.OutputFolder 'data') -Force  
+        $outputMediaServerFolder = New-Item -ItemType Directory -Path (Join-Path $outputDataFolder 'media_server') -Force  
+        
+        Write-Output "`n--- Compressing root folders, excluding 'data' ---"
+        Compress-SubFolders $scriptConfig.InputFolder $scriptConfig.OutputFolder 
+
+        Write-Output "`n--- Compressing 'data' folders, excluding 'media_server' ---"
+        Compress-SubFolders $inputDataFolder $outputDataFolder 
+
+        Write-Output "`n--- Compressing 'media_server' folders ---"
+        Compress-SubFolders $inputMediaServerFolder $outputMediaServerFolder
+
+        $elapsed = (Get-Date) - $start
+        Write-Output "Backup completed. Files are stored in: $($scriptConfig.OuputFolder) "
+        Write-Output "Elapsed time: ($elapsed)"
+    }
+    catch{
+        Write-Error $_
+    }
+    finally{
+        Write-Output "Changing ownership of OutputFolder..." | Out-Host
         sudo chown usuario -R $outputPath 
     }
 }
+
+main
