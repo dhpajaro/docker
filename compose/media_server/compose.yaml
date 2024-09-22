@@ -293,8 +293,19 @@ services:
       - ../../data/media_server/tdarr/logs:/app/logs
       - ../../data/media_server/tdarr_temp:/temp
       - ${MEDIA}:/data/media
+  autobrr:
+    container_name: autobrr
+    image: ghcr.io/autobrr/autobrr:latest
+    restart: unless-stopped
+    environment:
+      - TZ=${TIMEZONE}
+    user: 1000:1000
+    volumes:
+      - ../../data/media_server/autobrr/config:/config
+      - ${USB}/torrents:/data/torrents
+    ports:
+      - 7474:7474
 networks:
   default:
     name: media_server
-  traefik-proxy:
-    external: true
+
