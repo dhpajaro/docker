@@ -7,7 +7,6 @@ services:
       - TZ=${TIMEZONE}
     image: portainer/portainer-ce:latest
     ports:
-      - 8000:8000
       - 9443:9443
     privileged: true
     restart: always
@@ -19,19 +18,18 @@ services:
     ports:
       - 3333:80
       - 8444:443
+    env_file: speedtest-tracker.env
     environment:
       - PUID=${UID:-1000}
       - PGID=${GID:-1000}
       - TZ=${TIMEZONE}
-      - APP_URL=${SERVER_DOMAIN}
+      - APP_URL='http://${SERVER_DOMAIN}'
       - PUBLIC_DASHBOARD=true
       - SPEEDTEST_SCHEDULE=*/30 * * * *
-      - SPEEDTEST_SERVERS=${SPEEDTEST_SERVERS}
       - PRUNE_RESULTS_OLDER_THAN=0
       - APP_TIMEZONE=${TIMEZONE}
       - DISPLAY_TIMEZONE=${TIMEZONE}
       - DB_CONNECTION=sqlite
-      - APP_KEY=${API_KEY_SPEEDTEST_TRACKER}
     volumes:
       - ../../data/management/speedtest-tracker/config:/config
     image: lscr.io/linuxserver/speedtest-tracker:0.20.6
@@ -44,46 +42,13 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - 7000:8080
-  alist:
-    image: xhofe/alist-aria2:latest
-    container_name: alist
-    labels:
-      autoheal-app: true
-    ports:
-      - 5244:5244
-    restart: always
-    volumes:
-      - ../../data/management/alist/data:/opt/alist/data
-      - ${DATA}:${DATA}
-      - ${MEDIA}:${MEDIA}
-      - ${HOME_FOLDER}:${HOME_FOLDER}
-      - ${DATA}:/DATA
-      - ${MEDIA}:/MEDIA
-      - ${HOME_FOLDER}:/HOME_FOLDER
-    environment:
-      - PUID=${UID:-1000}
-      - PGID=${GID:-1000}
-      - TZ=${TIMEZONE}
-      - UMASK=022
-    healthcheck:
-      interval: 10s
-      retries: 3
-      start_period: 5s
-      test:
-        - CMD-SHELL
-        - cat /MEDIA/media_no_local.anchor && cat /DATA/YK_mount/YK.anchor
-      timeout: 10s
-    networks:
-      - default
-      - media_server_default
   duckdns:
     container_name: duckdns
+    env_file: duckdns.env
     environment:
       - PUID=${UID:-1000}
       - PGID=${GID:-1000}
       - TZ=${TIMEZONE}
-      - SUBDOMAINS=${DUCKDNS_SUBDOMAIN}
-      - TOKEN=${DUCKDNS_TOKEN}
       - UPDATE_IP=ipv4
       - LOG_FILE=false
     image: lscr.io/linuxserver/duckdns:latest
@@ -92,20 +57,12 @@ services:
       - ../../data/management/duckdns/config:/config
   homepage:
     container_name: homepage
-    environment:
-      - HOMEPAGE_VAR_API_KEY_PORTAINER=${API_KEY_PORTAINER}
-      - HOMEPAGE_VAR_API_KEY_RADARR=${API_KEY_RADARR}
-      - HOMEPAGE_VAR_API_KEY_TAUTULLI=${API_KEY_TAUTULLI}
-      - HOMEPAGE_VAR_API_KEY_PLEX=${API_KEY_PLEX}
-      - HOMEPAGE_VAR_API_KEY_SONARR=${API_KEY_SONARR}
-      - HOMEPAGE_VAR_API_KEY_BAZARR=${API_KEY_BAZARR}
-      - HOMEPAGE_VAR_API_KEY_JELLYFIN=${API_KEY_JELLYFIN}
-      - HOMEPAGE_VAR_API_KEY_OVERSEERR=${API_KEY_OVERSEERR}
-      - HOMEPAGE_VAR_TAILSCALE_SERVER_DNS_NAME=${TAILSCALE_SERVER_DNS_NAME}
-      - HOMEPAGE_VAR_QBITTORRENT_USERNAME=${QBITTORRENT_USERNAME}
-      - HOMEPAGE_VAR_QBITTORRENT_PASSWORD=${QBITTORRENT_PASSWORD}
-      - HOMEPAGE_VAR_SERVER_DOMAIN=${LOCAL_DOMAIN}
+    env_file: homepage.env
     image: ghcr.io/gethomepage/homepage:latest
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.homepage.rule=Host(`${SERVER_DOMAIN}`)
+      - traefik.docker.network=traefik-proxy
     ports:
       - 3000:3000
     restart: always
@@ -117,7 +74,8 @@ services:
       - ${USB}:/DISK_2
     networks:
       - default
-      - media_server_default
+      - media_server
+      - traefik-proxy
   openspeedtest:
     container_name: openspeedtest
     image: openspeedtest/latest
@@ -126,7 +84,7 @@ services:
       - 4101:3001
     restart: always
 networks:
-  default:
-    driver: bridge
-  media_server_default:
+  media_server:
+    external: true
+  traefik-proxy:
     external: true
