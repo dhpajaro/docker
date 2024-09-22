@@ -1,0 +1,32 @@
+services:
+  alist:
+    image: xhofe/alist-aria2:latest
+    container_name: alist
+    labels:
+      autoheal-app: true
+    ports:
+      - 5244:5244
+    restart: always
+    volumes:
+      - ../../data/management/alist/data:/opt/alist/data
+      - ${DATA}:${DATA}
+      - ${MEDIA}:${MEDIA}
+      - ${HOME_FOLDER}:${HOME_FOLDER}
+      - ${YK}:${YK}
+    environment:
+      - PUID=${UID:-1000}
+      - PGID=${GID:-1000}
+      - TZ=${TIMEZONE}
+      - UMASK=022
+    healthcheck:
+      interval: 10s
+      retries: 3
+      start_period: 5s
+      test:
+        - CMD-SHELL
+        - cat ${MEDIA}/media_no_local.anchor && cat ${YK}/YK.anchor
+      timeout: 10s
+networks:
+  default:
+    name: media_server
+    external: true
