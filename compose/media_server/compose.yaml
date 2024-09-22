@@ -201,8 +201,8 @@ services:
       - apparmor:unconfined
     volumes:
       - ../../rclone:/config/rclone
-      - ../../data/media_server/media_local:/media_local_subs:rw
-      - ${DATA}/media_local_mkv:/media_local_mkv:rw
+      - ../../data/media_server/media_local:/media_local_subs
+      - ${DATA}/media_local_mkv:/media_local_mkv
       - ${MEDIA}:/data:rshared
   rdt-client:
     container_name: rdt-client
@@ -292,5 +292,9 @@ services:
       - ../../data/media_server/tdarr/config:/app/configs
       - ../../data/media_server/tdarr/logs:/app/logs
       - ../../data/media_server/tdarr_temp:/temp
-      - ${MEDIA}:/media
-networks: {}
+      - ${MEDIA}:/data/media
+networks:
+  default:
+    name: media_server
+  traefik-proxy:
+    external: true
