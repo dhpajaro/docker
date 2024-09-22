@@ -1,5 +1,7 @@
 services:
   dockge:
+    # NOTE: dockge overrides $HOME. Any stack that will be managed by dockge needs 
+    # to use a custom variable to reference $HOME
     container_name: dockge
     image: louislam/dockge:1
     user: 1000:1000

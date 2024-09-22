@@ -17,7 +17,6 @@ services:
     container_name: speedtest-tracker
     ports:
       - 3333:80
-      - 8444:443
     env_file: speedtest-tracker.env
     environment:
       - PUID=${UID:-1000}
@@ -32,7 +31,7 @@ services:
       - DB_CONNECTION=sqlite
     volumes:
       - ../../data/management/speedtest-tracker/config:/config
-    image: lscr.io/linuxserver/speedtest-tracker:0.20.6
+    image: lscr.io/linuxserver/speedtest-tracker:latest
     restart: always
   dozzle:
     container_name: dozzle
@@ -62,6 +61,7 @@ services:
     labels:
       - traefik.enable=true
       - traefik.http.routers.homepage.rule=Host(`${SERVER_DOMAIN}`)
+      - traefik.http.routers.homepage_path.rule=Path(`/`)
       - traefik.docker.network=traefik-proxy
     ports:
       - 3000:3000
@@ -74,14 +74,13 @@ services:
       - ${USB}:/DISK_2
     networks:
       - default
-      - media_server
       - traefik-proxy
+      - media_server
   openspeedtest:
     container_name: openspeedtest
     image: openspeedtest/latest
     ports:
       - 4100:3000
-      - 4101:3001
     restart: always
 networks:
   media_server:

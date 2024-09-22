@@ -12,5 +12,5 @@ services:
     command: console state:import -v && console state:export -vvif -s jellyfin
 networks:
   default:
-    name: media_server_default
+    name: media_server
     external: true

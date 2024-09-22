@@ -10,9 +10,8 @@ services:
     restart: on-failure:2
     volumes:
       - ../../data/plextraktsync/config:/app/config
-
 networks:
   default:
-    name: media_server_default
+    name: media_server
     external: true
 

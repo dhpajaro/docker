@@ -2,8 +2,8 @@ services:
   bazarr:
     container_name: bazarr
     environment:
-      - PUID=1000
-      - PGID=1000
+      - PUID=${UID:-1000}
+      - PGID=${UID:-1000}
       - TZ=${TIMEZONE}
     healthcheck:
       interval: 10s
