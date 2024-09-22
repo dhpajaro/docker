@@ -11,7 +11,7 @@ services:
       - KEYBOARD= en-US
       - DISK_SIZE= 128G
       - USERNAME= docker
-      - RAM_SIZE= 3G
+      - RAM_SIZE= 4G
       - ARGUMENTS= -device usb-host,vendorid=0x174c,productid=0x55aa
     devices:
       - /dev/kvm
