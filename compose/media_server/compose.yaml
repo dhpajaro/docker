@@ -260,7 +260,7 @@ services:
       - PUID=${UID:-1000}
       - PGID=${GID:-1000}
       - TZ=${TIMEZONE}
-    image: lscr.io/linuxserver/tautulli:2.13.4
+    image: lscr.io/linuxserver/tautulli:latest
     ports:
       - 8181:8181
     restart: always
