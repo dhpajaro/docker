@@ -49,7 +49,7 @@ services:
       - PUID=${UID:-1000}
       - PGID=${GID:-1000}
       - TZ=${TIMEZONE}
-      - JELLYFIN_PublishedServerUrl=${LOCAL_DOMAIN}
+      - JELLYFIN_PublishedServerUrl=${SERVER_DOMAIN}
       - JELLYFIN_FFmpeg__probesize=62000000
       - JELLYFIN_FFmpeg__analyzeduration=62000000
     group_add:
@@ -65,8 +65,6 @@ services:
       timeout: 15s
     hostname: jellyfin
     image: lscr.io/linuxserver/jellyfin:latest
-    labels:
-      autoheal-app: true
     ports:
       - 8096:8096
       - 7359:7359
@@ -112,8 +110,6 @@ services:
       timeout: 10s
     hostname: plex
     image: linuxserver/plex:latest
-    labels:
-      autoheal-app: true
     ports:
       - 32400:32400
       - 32401:32401
@@ -176,6 +172,8 @@ services:
       - ${MEDIA}:/data/media:rw
       - ${TORRENTS_FOLDER}:/data/torrents:rw
   rclone_media:
+    group_add:
+      - "999"
     cap_add:
       - SYS_ADMIN
     command: "mount media: /data --allow-non-empty --allow-other --dir-cache-time
@@ -188,6 +186,7 @@ services:
       - PUID=${UID:-1000}
       - PGID=${GID:-1000}
       - TZ=${TIMEZONE}
+      - UMASK=022
     healthcheck:
       interval: 10s
       retries: 3
@@ -207,7 +206,7 @@ services:
       - ${MEDIA}:/data:rshared
   rdt-client:
     container_name: rdt-client
-    image: rogerfar/rdtclient
+    image: rogerfar/rdtclient:latest
     environment:
       - PUID=${UID:-1000}
       - PGID=${GID:-1000}
