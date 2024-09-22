@@ -9,4 +9,6 @@ services:
       - ../../data/pi-hole/config:/etc/pihole
       - ../../data/pi-hole/etc-dnsmasq.d:/etc/dnsmasq.d
     restart: unless-stopped
+    profiles:
+      - disabled
 networks: {}
