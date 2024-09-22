@@ -12,4 +12,9 @@ services:
     ports:
       - 1970:1970
     restart: unless-stopped
-networks: {}
+    networks:
+      - default
+      - traefik-proxy
+networks:
+  traefik-proxy:
+    external: true

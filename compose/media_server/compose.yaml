@@ -308,4 +308,5 @@ services:
 networks:
   default:
     name: media_server
-
+  traefik-proxy:
+    external: true

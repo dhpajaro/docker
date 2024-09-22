@@ -23,4 +23,13 @@ services:
       - ../../data/bazarr/config:/config:rw
       - ../../data/bazarr/languages.json:/config/subcleaner/libs/subcleaner/languages/languages.json:ro
       - ${MEDIA}:/data/media:rw
-networks: {}
+    networks:
+      - default
+      - traefik-proxy
+      
+networks:
+  default:
+    name: media_server
+    external: true
+  traefik-proxy:
+    external: true

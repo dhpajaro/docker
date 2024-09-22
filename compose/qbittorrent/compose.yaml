@@ -17,7 +17,12 @@ services:
       - ${TORRENTS_FOLDER}:/data/torrents
       - ${MEDIA}:/data/media
       - ${USB}:/data/USB
+    networks:
+      - default
+      - traefik-proxy
 networks:
   default:
-    name: media_server_default
+    name: media_server
+    external: true
+  traefik-proxy:
     external: true

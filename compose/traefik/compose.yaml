@@ -1,0 +1,18 @@
+version: "3"
+services:
+  reverse-proxy:
+    image: traefik:v3.1
+    container_name: traefik
+    command: --api.insecure=true --providers.docker --providers.docker.exposedbydefault=false
+    ports:
+      - 80:80
+      - 7777:8080
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+  whoami:
+    image: traefik/whoami
+    labels:
+      - traefik.http.routers.whoami.rule=Host(`whoami.${SERVER_DOMAIN}`)
+networks:
+  default:
+    name: traefik-proxy

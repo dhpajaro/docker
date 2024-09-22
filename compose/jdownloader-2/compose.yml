@@ -1,6 +1,6 @@
 services:
-  jdownloader-2:
-    container_name: jdownloader-2
+  jdownloader:
+    container_name: jdownloader
     environment:
       - PUID=${UID:-1000}
       - PGID=${GID:-1000}
@@ -11,9 +11,14 @@ services:
     image: jlesage/jdownloader-2
     ports:
       - 1500:5800
-      - 1501:5900
     restart: unless-stopped
     volumes:
       - ../../data/jdownloader-2/config:/config:rw
       - ${JDOWNLOADER_FOLDER}:/output:rw
       - ${JDOWNLOADER_FOLDER}:${JDOWNLOADER_FOLDER}:rw
+    networks:
+      - default
+      - traefik-proxy
+networks:
+  traefik-proxy:
+    external: true
