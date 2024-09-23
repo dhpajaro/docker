@@ -82,6 +82,16 @@ services:
     ports:
       - 4100:3000
     restart: always
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: uptime-kuma
+    
+    volumes:
+      - ../../data/management/uptime-kuma/data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - 3001:3001 
+    restart: always
 networks:
   media_server:
     external: true
