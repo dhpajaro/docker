@@ -6,7 +6,10 @@ param(
 
     [parameter(Mandatory=$true)]
     [alias("s")]
-    [string]$stack
+    [string]$stack,
+
+    [Parameter(ValueFromRemainingArguments=$true)]
+    [array]$additionalArgs
 )
 
 $stacksDir = "$env:HOME/docker/compose"
@@ -52,18 +55,18 @@ foreach($currentStack in $stacksToProcess){
     try {
         
         switch ($command) {
-            "up" { & docker compose up -d --remove-orphans}
-			"restart" { & docker compose restart}
-            "logs" { & docker compose logs -f -n 100 -t }
+            "up" { & docker compose up -d --remove-orphans $additionalArgs}
+			"restart" { & docker compose restart $additionalArgs}
+            "logs" { & docker compose logs -f -n 100 -t $additionalArgs}
             "down" { 
                 if (-not $running){ 
                     Write-Warning "$($currentStack.Name) is not running"}
-                    & docker compose down --remove-orphans
+                    & docker compose down --remove-orphans $additionalArgs
                 }
             "stop" { 
                 if (-not $running){ 
                     Write-Warning "$($currentStack.Name) is not running"}
-                    & docker compose stop
+                    & docker compose stop $additionalArgs
                 }
             "pull" { & docker compose pull }
             default {
