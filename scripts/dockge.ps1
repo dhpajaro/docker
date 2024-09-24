@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory=$true)]
     [alias("c")]
-    [ValidateSet("up","down","pull","restart","stop","update","upgrade")]
+    [ValidateSet("up","down","pull","logs","restart","stop","update","upgrade")]
     [string]$command,
 
     [parameter(Mandatory=$true)]
@@ -54,6 +54,7 @@ foreach($currentStack in $stacksToProcess){
         switch ($command) {
             "up" { & docker compose up -d --remove-orphans}
 			"restart" { & docker compose restart}
+            "logs" { & docker compose logs -f -n 100 -t }
             "down" { 
                 if (-not $running){ 
                     Write-Warning "$($currentStack.Name) is not running"}
