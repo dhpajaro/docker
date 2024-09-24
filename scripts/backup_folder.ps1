@@ -103,7 +103,7 @@ function Compress-LooseFiles {
     Write-Output "`n--- Compressing loose files ---"
     foreach ($file in $looseFiles) {
         $outputPath = Join-Path $scriptConfig.OutputFolder "loose_files.7z"
-        if ($file.Extension in $scriptExtensions) {
+        if ($file.Extension -in $scriptExtensions) {
             Write-Output "copying '$($file.Name)'..."
             Copy-Item -Path $file -Destination $outputPath -Force
         } else {
@@ -113,9 +113,8 @@ function Compress-LooseFiles {
 }
 
 function main{
+    $start = Get-Date
     try{
-
-        $start = Get-Date
         Compress-LooseFiles
         
         $inputDataFolder = Join-Path $scriptConfig.InputFolder 'data'
@@ -132,16 +131,20 @@ function main{
         Write-Output "`n--- Compressing 'media_server' folders ---"
         Compress-SubFolders $inputMediaServerFolder $outputMediaServerFolder
 
-        $elapsed = (Get-Date) - $start
-        Write-Output "Backup completed. Files are stored in: $($scriptConfig.OuputFolder) "
-        Write-Output "Elapsed time: ($elapsed)"
+        
+		Write-Output "`n--- ---------------------------------- ---"
+        Write-Host "Backup completed!" -Foreground green
+        
     }
     catch{
-        Write-Error $_
+        Write-Host "Backup Failed!" -Foreground red
+        Write-Error $_ | Out-Host
     }
     finally{
-        Write-Output "Changing ownership of OutputFolder..." | Out-Host
-        sudo chown usuario -R $outputPath 
+        $elapsed = (Get-Date) - $start
+        Write-Output "Elapsed time: ($elapsed)"
+        Write-Output "Changing ownership of '$($scriptConfig.OutputFolder)'..." | Out-Host
+        chown $env:USER -R $scriptConfig.OutputFolder
     }
 }
 
