@@ -12,7 +12,7 @@ param(
     [array]$excludeFolders
 )
 
-function Check-RunEnviroment {
+function Test-RunningEnviroment {
     if (-not ($isLinux)){
         Throw "script only runs on Linux"
     }
@@ -23,7 +23,7 @@ function Check-RunEnviroment {
     }
 }
 
-Check-RunEnviroment
+Test-RunningEnviroment
 
 $timeNow = Get-Date -Format "yyyyMMdd_HHmmss"
 $outputRoot = Split-Path $inputPath -Parent
